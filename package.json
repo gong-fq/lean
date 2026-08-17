@@ -1,0 +1,15 @@
+{
+  "name": "lean4-formal-reasoning-platform",
+  "version": "1.0.0",
+  "private": true,
+  "description": "AI-assisted Lean 4 formal reasoning learning platform for teachers and researchers without a formal-verification background.",
+  "engines": {
+    "node": ">=18"
+  },
+  "scripts": {
+    "dev": "netlify dev"
+  },
+  "devDependencies": {
+    "netlify-cli": "^17.0.0"
+  }
+}

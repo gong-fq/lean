@@ -1,0 +1,553 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>⊢ Lean 4 形式化推理学习平台</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@600;700&family=Noto+Sans+SC:wght@400;500;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink:#14161f;
+    --panel:#1b1e2b;
+    --line:#323654;
+    --parchment:#ede8dd;
+    --muted:#8b93a7;
+    --teal:#4fd1ae;
+    --teal-dim:#2c7a63;
+    --amber:#e8a33d;
+    --red:#e8607a;
+    --mono:'JetBrains Mono', ui-monospace, monospace;
+    --serif:'Noto Serif SC', serif;
+    --sans:'Noto Sans SC', sans-serif;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;background:var(--ink);color:var(--parchment);font-family:var(--sans);}
+  ::selection{background:var(--teal-dim);color:#fff;}
+
+  /* ---- Layout shell ---- */
+  .shell{display:grid;grid-template-columns:280px 1fr;min-height:100vh;}
+  @media (max-width:860px){.shell{grid-template-columns:1fr;}}
+
+  /* ---- Sidebar ---- */
+  .sidebar{background:#101220;border-right:1px solid var(--line);padding:22px 16px;position:sticky;top:0;height:100vh;overflow-y:auto;}
+  @media (max-width:860px){.sidebar{position:relative;height:auto;}}
+  .brand{display:flex;align-items:baseline;gap:10px;margin-bottom:4px;}
+  .brand .turnstile{font-family:var(--mono);font-size:26px;color:var(--teal);}
+  .brand h1{font-family:var(--serif);font-size:16px;line-height:1.3;margin:0;color:var(--parchment);}
+  .brand-sub{font-size:11px;color:var(--muted);margin:4px 0 22px 36px;letter-spacing:.02em;}
+
+  .chapter-list{list-style:none;margin:0;padding:0;}
+  .chapter-item{margin-bottom:2px;}
+  .chapter-btn{width:100%;text-align:left;background:none;border:none;color:var(--muted);font-family:var(--sans);font-size:13.5px;padding:9px 10px;border-radius:6px;cursor:pointer;display:flex;gap:10px;align-items:flex-start;line-height:1.4;transition:background .15s, color .15s;}
+  .chapter-btn:hover{background:#1a1d2e;color:var(--parchment);}
+  .chapter-btn.active{background:var(--panel);color:var(--teal);}
+  .chapter-num{font-family:var(--mono);font-size:11px;color:var(--muted);flex:0 0 auto;padding-top:1px;}
+  .chapter-btn.active .chapter-num{color:var(--teal);}
+
+  .progress-wrap{margin-top:22px;padding-top:16px;border-top:1px solid var(--line);}
+  .progress-label{font-size:11px;color:var(--muted);display:flex;justify-content:space-between;margin-bottom:6px;}
+  .progress-bar{height:5px;background:#282c40;border-radius:3px;overflow:hidden;}
+  .progress-fill{height:100%;background:linear-gradient(90deg,var(--teal-dim),var(--teal));width:0%;transition:width .3s;}
+
+  /* ---- Main ---- */
+  main{padding:36px 44px 80px;max-width:900px;}
+  @media (max-width:860px){main{padding:24px 20px 60px;}}
+
+  .goal-panel{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:20px 24px;margin-bottom:28px;font-family:var(--mono);font-size:13px;color:var(--muted);position:relative;overflow:hidden;}
+  .goal-panel::before{content:"";position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,var(--teal),transparent 70%);}
+  .goal-panel .hyp{color:var(--muted);}
+  .goal-panel .goal-line{border-top:1px solid var(--line);margin:10px 0;padding-top:10px;color:var(--parchment);}
+  .goal-panel .turnstile-mark{color:var(--teal);margin-right:8px;}
+
+  .chapter-eyebrow{font-family:var(--mono);font-size:12px;color:var(--teal);letter-spacing:.08em;text-transform:uppercase;margin-bottom:8px;}
+  h2.chapter-title{font-family:var(--serif);font-size:30px;margin:0 0 6px;color:var(--parchment);line-height:1.3;}
+  .chapter-tagline{color:var(--muted);font-size:14.5px;margin:0 0 30px;}
+
+  section.block{margin-bottom:34px;}
+  .block h3{font-family:var(--serif);font-size:17px;color:var(--teal);margin:0 0 10px;display:flex;align-items:center;gap:8px;}
+  .block h3::before{content:"§";color:var(--amber);font-family:var(--mono);}
+  .block p{font-size:14.5px;line-height:1.85;color:#d6d2c6;margin:0 0 10px;}
+  .block p code, li code{background:#262a3d;color:var(--teal);padding:1px 6px;border-radius:4px;font-family:var(--mono);font-size:.92em;}
+
+  pre.code{background:#0e1019;border:1px solid var(--line);border-left:3px solid var(--teal-dim);border-radius:8px;padding:16px 18px;overflow-x:auto;font-family:var(--mono);font-size:13px;line-height:1.7;color:#e8e4d6;margin:0 0 8px;}
+  pre.code .kw{color:#e8a33d;}
+  .code-actions{display:flex;gap:10px;margin-bottom:20px;}
+  .btn{font-family:var(--sans);font-size:12.5px;border:1px solid var(--line);background:var(--panel);color:var(--parchment);padding:7px 13px;border-radius:6px;cursor:pointer;text-decoration:none;display:inline-flex;align-items:center;gap:6px;transition:border-color .15s, color .15s;}
+  .btn:hover{border-color:var(--teal);color:var(--teal);}
+  .btn.primary{background:var(--teal);border-color:var(--teal);color:#0e1019;font-weight:700;}
+  .btn.primary:hover{background:#63e0c0;color:#0e1019;}
+
+  .exercise{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:18px 20px;margin-bottom:14px;}
+  .exercise .ex-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;}
+  .exercise .ex-head span{font-family:var(--mono);font-size:11.5px;color:var(--amber);letter-spacing:.06em;}
+  .exercise p{font-size:14px;color:#d6d2c6;margin:0 0 10px;}
+  details{margin-top:8px;}
+  summary{cursor:pointer;font-size:12.5px;color:var(--muted);font-family:var(--mono);}
+  summary:hover{color:var(--teal);}
+  details pre.code{margin-top:10px;}
+
+  .links-row{display:flex;flex-wrap:wrap;gap:8px;margin-top:24px;}
+  .link-chip{font-size:12px;color:var(--muted);border:1px solid var(--line);border-radius:20px;padding:5px 12px;text-decoration:none;font-family:var(--mono);}
+  .link-chip:hover{color:var(--teal);border-color:var(--teal);}
+
+  /* AI tutor */
+  .ai-panel{margin-top:38px;border:1px solid var(--teal-dim);border-radius:10px;background:linear-gradient(180deg,#182420,#151826);padding:20px 22px;}
+  .ai-panel h3{font-family:var(--serif);color:var(--amber);margin:0 0 4px;font-size:16px;}
+  .ai-panel .ai-sub{font-size:12.5px;color:var(--muted);margin:0 0 14px;}
+  .ai-panel textarea{width:100%;min-height:130px;background:#0e1019;border:1px solid var(--line);border-radius:8px;color:var(--parchment);font-family:var(--mono);font-size:13px;padding:12px;resize:vertical;line-height:1.6;}
+  .ai-panel textarea:focus{outline:none;border-color:var(--teal);}
+  .ai-controls{display:flex;justify-content:space-between;align-items:center;margin-top:10px;}
+  .ai-reply{margin-top:16px;background:#0e1019;border-radius:8px;padding:14px 16px;font-size:13.5px;line-height:1.8;color:#d6d2c6;white-space:pre-wrap;display:none;border-left:3px solid var(--amber);}
+  .ai-reply.show{display:block;}
+  .spinner{display:none;width:14px;height:14px;border:2px solid var(--line);border-top-color:var(--teal);border-radius:50%;animation:spin .7s linear infinite;}
+  .spinner.show{display:inline-block;}
+  @keyframes spin{to{transform:rotate(360deg);}}
+
+  .chapter-nav-footer{display:flex;justify-content:space-between;margin-top:44px;padding-top:20px;border-top:1px solid var(--line);}
+  .foot-btn{font-family:var(--mono);font-size:12.5px;color:var(--muted);background:none;border:none;cursor:pointer;}
+  .foot-btn:hover{color:var(--teal);}
+  .foot-btn:disabled{opacity:.3;cursor:default;}
+</style>
+</head>
+<body>
+<div class="shell">
+  <nav class="sidebar">
+    <div class="brand"><span class="turnstile">⊢</span><h1>Lean 4<br>形式化推理学习平台</h1></div>
+    <div class="brand-sub">概念 → 代码 → 证明 → 调试 → 练习 → AI 辅导</div>
+    <ul class="chapter-list" id="chapterList"></ul>
+    <div class="progress-wrap">
+      <div class="progress-label"><span>学习进度</span><span id="progressText">0 / 12</span></div>
+      <div class="progress-bar"><div class="progress-fill" id="progressFill"></div></div>
+    </div>
+  </nav>
+  <main id="main"></main>
+</div>
+
+<script>
+/* ============ 课程数据 ============ */
+const CHAPTERS = [
+{
+  id:1, title:"为什么是 Lean 4 —— AI 时代的形式化思维", tag:"引论 · 无需先修知识",
+  concept:`Lean 4 既是一门函数式编程语言，也是一个交互式定理证明助手（proof assistant）。它的核心思想是 <code>Curry-Howard 同构</code>：一个数学命题就是一个类型，命题的证明就是这个类型的一个"项"（term）。计算机检查你的证明，等价于检查一段代码是否类型正确——这个检查是<strong>机械的、可靠的</strong>，不依赖人的审阅。<br><br>在大模型时代，Lean 4 的意义在于：AI 可以帮你<em>生成</em>证明思路，但只有 Lean 的类型检查器能<em>验证</em>这个思路是否真的严密。这正是本平台每一讲都遵循"概念→代码→证明→调试→练习→AI辅导"闭环的原因：AI 负责启发与纠错，Lean 负责裁决对错。`,
+  code:`-- 这是你在 Lean 4 中看到的第一段代码：一个"证明"
+-- 命题：1 + 1 = 2
+theorem one_add_one : 1 + 1 = 2 := rfl
+-- rfl 意为 "reflexivity"（自反性），
+-- 表示两边计算后完全相同，是最基础的证明方式`,
+  exercises:[
+    {q:"不改变证明策略，把上面的定理改写为证明 <code>2 + 2 = 4</code>，命名为 <code>two_add_two</code>。",
+     a:`theorem two_add_two : 2 + 2 = 4 := rfl`},
+    {q:"用一句话（不超过 50 字）说明：为什么「AI 生成证明」和「Lean 验证证明」是两件不同的事？",
+     a:`参考答案：AI 生成的是"看起来合理"的自然语言或代码建议，可能包含逻辑漏洞；Lean 的类型检查器会机械地逐步验证每一条推理规则是否成立，通过即为严格正确，不通过则报错，二者提供的是"启发"与"证明"两种不同强度的保证。`}
+  ]
+},
+{
+  id:2, title:"环境与基本语法", tag:"第一步 · #eval / #check / def",
+  concept:`Lean 4 有三个你会反复使用的"命令"：<code>#eval</code> 计算并打印一个表达式的值；<code>#check</code> 显示一个表达式的类型而不计算它；<code>def</code> 定义一个新的常量或函数。注释用 <code>--</code>（单行）或 <code>/- ... -/</code>（多行）。<br><br>本平台不要求本地安装 Lean：每一讲的代码都可以点击"在线运行"按钮，在官方 Lean Playground（<code>live.lean-lang.org</code>）中直接粘贴运行，浏览器里即可完成类型检查。`,
+  code:`#eval 1 + 2          -- 计算并打印：3
+#check 1 + 2         -- 显示类型：Nat
+def greeting : String := "你好, Lean"
+#eval greeting       -- "你好, Lean"
+
+def square (n : Nat) : Nat := n * n
+#eval square 7       -- 49`,
+  exercises:[
+    {q:"定义一个函数 <code>double</code>，输入一个 <code>Nat</code>，返回它的两倍，并用 <code>#eval</code> 验证 <code>double 21 = 42</code>。",
+     a:`def double (n : Nat) : Nat := n * 2
+#eval double 21  -- 42`},
+    {q:"<code>#check</code> 和 <code>#eval</code> 的根本区别是什么？各自会不会执行计算？",
+     a:`参考答案：#check 只做类型推导，不执行任何计算，只回答"这个表达式合法吗、类型是什么"；#eval 会实际求值（编译并运行），返回具体结果。对于证明项（proof term），我们通常用 #check 而非 #eval，因为证明的"值"本身不重要，重要的是它的类型（即被证明的命题）与类型是否检查通过。`}
+  ]
+},
+{
+  id:3, title:"类型与函数：函数式编程基础", tag:"类型系统 · fun / -> / let / 递归",
+  concept:`Lean 4 中一切皆有类型。函数类型写作 <code>A → B</code>；匿名函数（lambda）用 <code>fun x => ...</code> 或 <code>λ x => ...</code>；<code>let</code> 引入局部定义。递归函数需要 Lean 能判定"终止"（结构递归最常见，即在递归调用中传入更小的子结构）。`,
+  code:`-- 函数类型与匿名函数
+def addOne : Nat → Nat := fun n => n + 1
+#eval addOne 9   -- 10
+
+-- 多参数、局部变量
+def hypotenuseSq (a b : Nat) : Nat :=
+  let a2 := a * a
+  let b2 := b * b
+  a2 + b2
+
+-- 结构递归：计算阶乘
+def factorial : Nat → Nat
+  | 0 => 1
+  | n + 1 => (n + 1) * factorial n
+#eval factorial 5   -- 120`,
+  exercises:[
+    {q:"写一个递归函数 <code>sumTo : Nat → Nat</code>，计算 <code>0 + 1 + ... + n</code>。",
+     a:`def sumTo : Nat → Nat
+  | 0 => 0
+  | n + 1 => (n + 1) + sumTo n
+#eval sumTo 10  -- 55`},
+    {q:"为什么 Lean 要求递归函数「结构递减」？如果去掉这个约束，类型系统会出现什么问题？",
+     a:`参考答案：Lean 的类型检查依赖"一切计算终止"这一假设（Curry-Howard 下，不终止的程序可以伪造任意命题的"证明"，破坏逻辑一致性）。结构递减保证每次递归调用作用在严格更小的子结构上，从而保证终止性；若允许任意递归，会破坏这一保证。`}
+  ]
+},
+{
+  id:4, title:"命题即类型：Curry-Howard 与项证明", tag:"逻辑基石 · Prop / 证明项",
+  concept:`在 Lean 中，<code>Prop</code> 是"命题"的类型，一个具体命题（如 <code>2 + 2 = 4</code>）本身又是一个类型；这个命题成立，等价于这个类型"有项"（可以构造出一个值）。写出这样一个项，就是"项模式"（term-mode）证明。<code>rfl</code>、直接函数应用、显式构造都是项模式证明的手段。`,
+  code:`-- 命题作为类型
+#check (2 + 2 = 4 : Prop)
+
+-- 项模式证明：直接给出证明项
+theorem add_comm_ex : 2 + 3 = 3 + 2 := by rfl
+
+-- 蕴含 A → B 的证明就是一个函数
+theorem implication_ex (h : 1 = 1) : 1 = 1 := h
+
+-- And 的证明是一个"对子"（构造子 And.intro）
+theorem and_ex : (1 = 1) ∧ (2 = 2) := And.intro rfl rfl`,
+  exercises:[
+    {q:"解释：为什么「证明 <code>A → B</code>」和「写一个从类型 A 到类型 B 的函数」在 Lean 里是同一件事？",
+     a:`参考答案：这正是 Curry-Howard 同构的核心——蕴含 A → B 对应函数类型 A → B；证明蕴含式，就是给出一个方法，把 A 的任意证明"转换"为 B 的证明，这与写一个把 A 类型的值映射为 B 类型的值的函数在结构上完全一致。`},
+    {q:"用项模式证明 <code>(3 = 3) ∧ (5 = 5)</code>。",
+     a:`theorem pair_ex : (3 = 3) ∧ (5 = 5) := And.intro rfl rfl`}
+  ]
+},
+{
+  id:5, title:"策略证明入门", tag:"tactic 模式 · intro / exact / apply / rw",
+  concept:`当证明项难以一次写出时，我们进入"策略模式"（用 <code>by</code> 开启），一步步把"目标"（goal）转化，直到消失。常用策略：<code>intro</code> 引入假设或变量；<code>exact</code> 给出恰好匹配目标的项；<code>apply</code> 应用一个定理/函数，把目标转化为它的前提；<code>rw</code>（rewrite）用等式改写目标。侧栏顶部的"目标面板"样式，就是 Lean 交互界面里你会实时看到的 <code>⊢</code>（turnstile，意为"待证目标"）。`,
+  code:`theorem id_nat (n : Nat) : n = n := by
+  rfl
+
+theorem imp_trans (p q r : Prop) (hpq : p → q) (hqr : q → r) : p → r := by
+  intro hp        -- 引入假设 hp : p，目标变为 r
+  apply hqr       -- 目标变为 q
+  apply hpq       -- 目标变为 p
+  exact hp        -- 用手头的 hp 关闭目标
+
+theorem rw_ex (a b : Nat) (h : a = b) : a + 1 = b + 1 := by
+  rw [h]`,
+  exercises:[
+    {q:"用策略模式证明：若 <code>a = b</code> 且 <code>b = c</code>，则 <code>a = c</code>（提示：两次 <code>rw</code>）。",
+     a:`theorem trans_ex (a b c : Nat) (h1 : a = b) (h2 : b = c) : a = c := by
+  rw [h1, h2]`},
+    {q:"在上面 <code>imp_trans</code> 的证明中，为什么最后一步不能再用 <code>apply</code>，只能用 <code>exact</code>？",
+     a:`参考答案：apply 会把目标"拆解"为新的子目标（要求你继续证明前提），适用于目标还需要进一步分解的情况；而当手头已经有一个类型与目标完全一致的项（如 hp : p，目标恰好是 p）时，不需要再拆解，直接用 exact 给出即可，语义上更精确，也是良好实践。`}
+  ]
+},
+{
+  id:6, title:"逻辑联结词的证明", tag:"And / Or / Not / Iff",
+  concept:`合取 <code>∧</code> 用 <code>constructor</code>（拆成两个子目标）或 <code>And.intro</code> 构造，用 <code>obtain ⟨h1, h2⟩ := h</code> 或 <code>h.1 / h.2</code> 拆解。析取 <code>∨</code> 用 <code>Or.inl / Or.inr</code> 构造，用 <code>cases h with</code> 或 <code>rcases h with h | h</code> 分类讨论。否定 <code>¬P</code> 本质是 <code>P → False</code>，常用反证法 <code>by_contra</code>。`,
+  code:`theorem and_intro_ex (p q : Prop) (hp : p) (hq : q) : p ∧ q := by
+  constructor
+  · exact hp
+  · exact hq
+
+theorem or_elim_ex (p q r : Prop) (h : p ∨ q) (hp : p → r) (hq : q → r) : r := by
+  cases h with
+  | inl h => exact hp h
+  | inr h => exact hq h
+
+theorem not_ex (p : Prop) (h : p) (hn : ¬p) : False := by
+  exact hn h`,
+  exercises:[
+    {q:"证明 <code>p ∧ q → q ∧ p</code>（合取交换律）。",
+     a:`theorem and_comm_ex (p q : Prop) : p ∧ q → q ∧ p := by
+  intro h
+  constructor
+  · exact h.2
+  · exact h.1`},
+    {q:"用 <code>by_contra</code> 证明：若 <code>¬¬p</code> 在经典逻辑下蕴含 <code>p</code>（提示：需要 <code>import Mathlib</code> 的 <code>Classical</code> 支持，或直接用 <code>Classical.byContradiction</code>）。",
+     a:`theorem dne_ex (p : Prop) (h : ¬¬p) : p := by
+  by_contra hp
+  exact h hp
+-- 说明：by_contra 会引入 ¬p 作为新假设 hp，
+-- 目标变为 False，与题面假设 h : ¬¬p 直接矛盾。`}
+  ]
+},
+{
+  id:7, title:"量词的证明", tag:"∀ / ∃ · intro / use / obtain",
+  concept:`全称量词 <code>∀ x, P x</code> 的证明：用 <code>intro x</code> 引入任意的 <code>x</code>，再证 <code>P x</code>。存在量词 <code>∃ x, P x</code> 的证明：用 <code>use v</code> 给出见证（witness）<code>v</code>，再证 <code>P v</code>。已有的存在性假设用 <code>obtain ⟨x, hx⟩ := h</code> 拆出见证与性质。`,
+  code:`theorem forall_ex : ∀ n : Nat, n + 0 = n := by
+  intro n
+  rfl
+
+theorem exists_ex : ∃ n : Nat, n + 1 = 5 := by
+  use 4
+
+theorem obtain_ex (h : ∃ n : Nat, n > 100) : ∃ m : Nat, m > 99 := by
+  obtain ⟨n, hn⟩ := h
+  use n
+  omega   -- 自动化算术策略，第 11 讲详解`,
+  exercises:[
+    {q:"证明 <code>∀ n : Nat, ∃ m : Nat, m = n + 1</code>。",
+     a:`theorem next_ex : ∀ n : Nat, ∃ m : Nat, m = n + 1 := by
+  intro n
+  use n + 1`},
+    {q:"简述 <code>use</code> 和 <code>exact</code> 的区别——为什么存在性证明必须用 <code>use</code> 而不是直接 <code>exact</code> 一个数？",
+     a:`参考答案：∃ x, P x 的证明项形式是一对 ⟨见证值, 性质证明⟩（Exists.intro）。use v 会自动把见证值代入并把目标简化为 P v，让你继续证明性质部分；而 exact 要求你一次性给出与目标类型完全匹配的完整项，对于存在性目标你需要同时给出见证和性质证明，直接 exact 一个数是类型不匹配的。`}
+  ]
+},
+{
+  id:8, title:"等式与计算证明", tag:"rfl / calc / simp / rw / unfold",
+  concept:`除了 <code>rfl</code> 和 <code>rw</code>，<code>calc</code> 让你写出可读的"逐步推导"链；<code>simp</code> 用一组已标记的化简引理自动化简目标；<code>unfold</code> 展开一个定义。教学场景中 <code>calc</code> 尤其重要——它让 Lean 证明读起来接近你在黑板上写的推导过程。`,
+  code:`theorem calc_ex (a b c : Nat) (h1 : a = b) (h2 : b = c) : a + 1 = c + 1 := by
+  calc a + 1 = b + 1 := by rw [h1]
+    _        = c + 1 := by rw [h2]
+
+theorem simp_ex (n : Nat) : n + 0 + 0 = n := by
+  simp
+
+def triple (n : Nat) : Nat := n + n + n
+theorem unfold_ex (n : Nat) : triple n = 3 * n := by
+  unfold triple
+  ring   -- 代数恒等式自动化，第 11 讲详解`,
+  exercises:[
+    {q:"用 <code>calc</code> 证明：若 <code>a = 2</code>，<code>b = a + 3</code>，则 <code>b = 5</code>。",
+     a:`theorem calc_ex2 (a b : Nat) (ha : a = 2) (hb : b = a + 3) : b = 5 := by
+  calc b = a + 3 := hb
+    _    = 2 + 3 := by rw [ha]
+    _    = 5     := by rfl`},
+    {q:"<code>simp</code> 和 <code>rfl</code> 都能「自动」关闭一些目标，二者能力边界有什么不同？",
+     a:`参考答案：rfl 只能证明两边在"定义展开+计算"意义下完全相同（无引理库参与）；simp 是一个可扩展的化简引擎，会反复应用一组被标记为 @[simp] 的引理（以及用户提供的引理）来重写目标，能处理远比 rfl 复杂的等式与逻辑化简，但结果依赖于当前加载了哪些 simp 引理，行为不如 rfl 那样"透明"。`}
+  ]
+},
+{
+  id:9, title:"归纳类型与归纳证明", tag:"inductive / match / induction",
+  concept:`用 <code>inductive</code> 自定义数据类型（如 <code>Nat</code>、<code>List</code> 本身就是归纳类型）。对归纳类型上的命题做证明，通常用 <code>induction</code> 策略：自动生成"基础情形"与"归纳情形"（含归纳假设 IH）两个子目标，对应数学归纳法。`,
+  code:`inductive Weekday where
+  | mon | tue | wed | thu | fri | sat | sun
+
+def isWeekend : Weekday → Bool
+  | .sat | .sun => true
+  | _ => false
+
+theorem sum_formula : ∀ n : Nat, 2 * sumTo n = n * (n + 1)
+  | 0 => rfl
+  | n + 1 => by
+      simp [sumTo, Nat.mul_add, sum_formula n]
+      ring`,
+  exercises:[
+    {q:"用 <code>induction</code> 策略证明第 3 讲定义的 <code>sumTo</code> 满足 <code>sumTo n ≤ sumTo (n+1)</code>。",
+     a:`theorem sumTo_mono (n : Nat) : sumTo n ≤ sumTo (n + 1) := by
+  induction n with
+  | zero => simp [sumTo]
+  | succ k ih => simp [sumTo]; omega`},
+    {q:"数学归纳法与 Lean 的 <code>induction</code> 策略之间是什么对应关系？「归纳假设」在 Lean 里体现为什么？",
+     a:`参考答案：数学归纳法证明"对一切自然数 n，P(n) 成立"分为基础情形 P(0) 与归纳步骤"若 P(k) 成立则 P(k+1) 成立"；Lean 的 induction n 策略机械地生成这两个子目标，归纳步骤中会自动把"P(k) 成立"作为一条新的假设（归纳假设 ih）加入上下文，供你在证明 P(k+1) 时直接使用。`}
+  ]
+},
+{
+  id:10, title:"结构体与类型类", tag:"structure / class / instance",
+  concept:`<code>structure</code> 定义带命名字段的数据类型（类似数学里的"元组带标签"，如"点"有 x、y 两个坐标）。<code>class</code> + <code>instance</code> 是 Lean 的类型类机制，用来表达"某类型具备某种结构/运算"（如 <code>Add</code>、<code>Ord</code>），支撑了 Mathlib 里代数结构（群、环、域……）的层层抽象。`,
+  code:`structure Point where
+  x : Nat
+  y : Nat
+
+def origin : Point := { x := 0, y := 0 }
+#eval origin.x   -- 0
+
+class Greetable (α : Type) where
+  greet : α → String
+
+instance : Greetable Point where
+  greet p := s!"点 ({p.x}, {p.y}) 向你问好"
+
+#eval Greetable.greet origin`,
+  exercises:[
+    {q:"定义 <code>structure Rectangle</code>，含 <code>width height : Nat</code>，再写函数 <code>area</code> 计算面积。",
+     a:`structure Rectangle where
+  width : Nat
+  height : Nat
+
+def area (r : Rectangle) : Nat := r.width * r.height
+#eval area { width := 3, height := 4 : Rectangle }  -- 12`},
+    {q:"类型类（type class）与普通结构体最本质的区别是什么？为什么 Mathlib 大量使用类型类来组织「群、环、域」这样的代数层级？",
+     a:`参考答案：普通 structure 只是打包数据；class 额外具备"实例可被自动推断（typeclass resolution）"的能力——一旦为某类型注册了 instance，之后 Lean 会在需要时自动查找并使用它，无需显式传参。这使得"环是一个特殊的群"这类层层继承的代数结构，可以通过类型类的继承与自动推断优雅表达，避免每次手动传递大量结构证明。`}
+  ]
+},
+{
+  id:11, title:"Mathlib 与自动化策略", tag:"import Mathlib · ring / linarith / omega / exact?",
+  concept:`Mathlib 是 Lean 4 的社区数学库，涵盖代数、分析、拓扑、数论等几乎所有数学分支的形式化定义与定理。日常科研/教学中最常用的"自动化"策略：<code>ring</code> 证代数恒等式；<code>linarith</code> 证线性（不）等式；<code>omega</code> 证整数/自然数的线性算术命题；<code>nlinarith</code> 处理含乘法的非线性不等式；<code>decide</code> 对可判定命题直接暴力求值；<code>exact?</code> / <code>apply?</code> 让 Lean 在库中搜索可用定理——教学与探索阶段极其实用。`,
+  code:`import Mathlib
+
+example (a b : ℝ) : (a + b)^2 = a^2 + 2*a*b + b^2 := by ring
+
+example (x : ℤ) (h : x > 3) : x ≥ 4 := by omega
+
+example (a b : ℝ) (h1 : a > 0) (h2 : b > 0) : a * b > 0 := by
+  positivity   -- 专门处理"正性"目标的自动化策略
+
+-- exact? 会在库中搜索能直接关闭当前目标的定理，
+-- 教学中常用来"发现"合适的定理名`,
+  exercises:[
+    {q:"用 <code>ring</code> 证明 <code>(x - y) * (x + y) = x^2 - y^2</code>（<code>x y : ℝ</code>）。",
+     a:`import Mathlib
+example (x y : ℝ) : (x - y) * (x + y) = x^2 - y^2 := by ring`},
+    {q:"用 <code>linarith</code> 证明：若 <code>a > b</code> 且 <code>b > c</code>，则 <code>a > c</code>（<code>a b c : ℝ</code>）。",
+     a:`import Mathlib
+example (a b c : ℝ) (h1 : a > b) (h2 : b > c) : a > c := by linarith`}
+  ]
+},
+{
+  id:12, title:"综合实战：形式化一道教学定理", tag:"收官项目 · 从零到证明",
+  concept:`最后一讲不引入新语法，而是完整走一遍闭环，用来"沉淀"前 11 讲的内容。以一个教学中常见的命题——<strong>"两个连续自然数之和为奇数"</strong>——为例，示范如何把一句自然语言命题，转写为 Lean 陈述，再逐步用策略完成证明，遇到卡壳时如何用 <code>#check</code> / <code>exact?</code> / AI 辅导定位问题。这也是你今后把自己教学/研究中的命题形式化的标准流程。`,
+  code:`import Mathlib
+
+-- 命题：对任意自然数 n，n + (n+1) 是奇数
+theorem consecutive_sum_odd (n : Nat) : Odd (n + (n + 1)) := by
+  use n
+  ring
+
+-- 调试提示：如果 ring 报错"未闭合目标"，
+-- 先用 #check @Odd 确认 Odd 的定义展开形式，
+-- 或用 unfold Odd 手动展开后再用 ring / omega 尝试`,
+  exercises:[
+    {q:"选一个你自己教学中常用的简单命题（例如「偶数乘以任何数仍是偶数」），把它翻译为 Lean 4 的 <code>theorem</code> 陈述（不要求完成证明），并解释每个符号的含义。",
+     a:`参考示例：
+theorem even_mul (n m : Nat) (h : Even n) : Even (n * m) := by
+  sorry  -- sorry 是"占位符"，表示暂未完成证明，
+         -- 但整段代码仍可以类型检查通过陈述本身，
+         -- 是形式化过程中常用的"先写陈述、后补证明"技巧`},
+    {q:"总结你在本讲中使用「AI 辅导」面板的一次交互：AI 给出的建议是否直接可用？Lean 的报错信息起到了什么校正作用？（开放题，无标准答案，用于自我复盘）",
+     a:`参考思路：记录你提交给 AI 的代码/问题、AI 的建议、Lean 实际报错三者的对比，体会"AI 提出假设 → Lean 给出确定性反馈 → 修正"这一闭环——这正是形式化辅助研究的核心工作方式。`}
+  ]
+}
+];
+
+/* ============ 渲染逻辑 ============ */
+const state = { current: 1, completed: new Set(JSON.parse(localStorage.getItem('lean4_done') || '[]')) };
+
+function saveProgress(){
+  localStorage.setItem('lean4_done', JSON.stringify([...state.completed]));
+}
+
+function renderSidebar(){
+  const list = document.getElementById('chapterList');
+  list.innerHTML = CHAPTERS.map(c => `
+    <li class="chapter-item">
+      <button class="chapter-btn ${c.id===state.current?'active':''}" onclick="goTo(${c.id})">
+        <span class="chapter-num">${String(c.id).padStart(2,'0')}${state.completed.has(c.id)?' ✓':''}</span>
+        <span>${c.title}</span>
+      </button>
+    </li>`).join('');
+  document.getElementById('progressText').textContent = `${state.completed.size} / ${CHAPTERS.length}`;
+  document.getElementById('progressFill').style.width = (state.completed.size / CHAPTERS.length * 100) + '%';
+}
+
+function escapeAttr(s){ return s.replace(/`/g,'\\`').replace(/</g,'&lt;'); }
+
+function renderMain(){
+  const c = CHAPTERS.find(x => x.id === state.current);
+  const idx = CHAPTERS.indexOf(c);
+  const prev = CHAPTERS[idx-1], next = CHAPTERS[idx+1];
+  const main = document.getElementById('main');
+  main.innerHTML = `
+    <div class="goal-panel">
+      <div class="hyp">teacher : ¬FormalBackground</div>
+      <div class="hyp">goal : Understand "${c.title}"</div>
+      <div class="goal-line"><span class="turnstile-mark">⊢</span>concept → code → proof → debug → exercise → AI tutor</div>
+    </div>
+    <div class="chapter-eyebrow">第 ${c.id} 讲 / 共 ${CHAPTERS.length} 讲</div>
+    <h2 class="chapter-title">${c.title}</h2>
+    <p class="chapter-tagline">${c.tag}</p>
+
+    <section class="block">
+      <h3>概念</h3>
+      <p>${c.concept}</p>
+    </section>
+
+    <section class="block">
+      <h3>代码</h3>
+      <pre class="code" id="codeBlock">${c.code}</pre>
+      <div class="code-actions">
+        <a class="btn primary" target="_blank" href="https://live.lean-lang.org/">在线运行 (Lean Playground) ↗</a>
+        <button class="btn" onclick="copyCode()">复制代码</button>
+        <button class="btn" onclick="markDone(${c.id})">标记本讲已完成</button>
+      </div>
+    </section>
+
+    <section class="block">
+      <h3>练习</h3>
+      ${c.exercises.map((ex,i)=>`
+        <div class="exercise">
+          <div class="ex-head"><span>练习 ${i+1}</span></div>
+          <p>${ex.q}</p>
+          <details>
+            <summary>显示参考答案</summary>
+            <pre class="code">${ex.a}</pre>
+          </details>
+        </div>
+      `).join('')}
+      <div class="links-row">
+        <a class="link-chip" target="_blank" href="https://live.lean-lang.org/">live.lean-lang.org — 在线 Playground</a>
+        <a class="link-chip" target="_blank" href="https://leanprover.github.io/theorem_proving_in_lean4/">Theorem Proving in Lean 4（官方教程）</a>
+        <a class="link-chip" target="_blank" href="https://leanprover-community.github.io/mathlib4_docs/">Mathlib4 文档</a>
+        <a class="link-chip" target="_blank" href="https://leanprover-community.github.io/learn.html">Lean Community 学习索引</a>
+      </div>
+    </section>
+
+    <div class="ai-panel">
+      <h3>◆ AI 辅导</h3>
+      <p class="ai-sub">粘贴你写的 Lean 代码或描述你卡住的地方，AI 会结合本讲内容给出提示（不会直接替你运行 Lean，最终请到 Playground 用类型检查验证）。</p>
+      <textarea id="aiInput" placeholder="例如：我照着例子写了 theorem ..., 但报错 unknown identifier，为什么？"></textarea>
+      <div class="ai-controls">
+        <button class="btn primary" onclick="askAI(${c.id})">
+          <span class="spinner" id="aiSpinner"></span> 提问 AI 导师
+        </button>
+        <span style="font-size:11px;color:var(--muted);font-family:var(--mono)">chapter-${c.id}</span>
+      </div>
+      <div class="ai-reply" id="aiReply"></div>
+    </div>
+
+    <div class="chapter-nav-footer">
+      <button class="foot-btn" ${prev?'':'disabled'} onclick="${prev?`goTo(${prev.id})`:''}">← ${prev?prev.title:''}</button>
+      <button class="foot-btn" ${next?'':'disabled'} onclick="${next?`goTo(${next.id})`:''}">${next?next.title:''} →</button>
+    </div>
+  `;
+  window.scrollTo({top:0, behavior:'instant'});
+}
+
+function goTo(id){ state.current = id; renderSidebar(); renderMain(); }
+
+function markDone(id){ state.completed.add(id); saveProgress(); renderSidebar(); }
+
+function copyCode(){
+  const text = document.getElementById('codeBlock').innerText;
+  navigator.clipboard.writeText(text).then(()=>{
+    const btn = event.target;
+    const old = btn.textContent;
+    btn.textContent = '已复制 ✓';
+    setTimeout(()=>btn.textContent = old, 1500);
+  });
+}
+
+async function askAI(chapterId){
+  const input = document.getElementById('aiInput').value.trim();
+  const reply = document.getElementById('aiReply');
+  const spinner = document.getElementById('aiSpinner');
+  if(!input){ reply.textContent = '请先输入你的问题或代码。'; reply.classList.add('show'); return; }
+  spinner.classList.add('show');
+  reply.classList.remove('show');
+  const chapter = CHAPTERS.find(c=>c.id===chapterId);
+  try{
+    const res = await fetch('/.netlify/functions/lean', {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({
+        chapterTitle: chapter.title,
+        chapterConcept: chapter.concept.replace(/<[^>]+>/g,''),
+        userMessage: input
+      })
+    });
+    const data = await res.json();
+    reply.textContent = data.reply || data.error || '未收到有效回复，请稍后重试。';
+  }catch(err){
+    reply.textContent = '请求失败：' + err.message + '（请确认已在 Netlify 后台配置 AI API Key）';
+  }finally{
+    spinner.classList.remove('show');
+    reply.classList.add('show');
+  }
+}
+
+renderSidebar();
+renderMain();
+</script>
+</body>
+</html>
